@@ -36,29 +36,85 @@
 # travelled with very close friends or neighbors in a village, however,
 # the definitions do not support such relations.
 
+import os
 import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+%matplotlib inline
+
+os.chdir("/Users/charlmarais/projects/ds4a_titanic")
+os.getcwd()
+
+# Load data
+train_df = pd.read_csv("train.csv")
+test_df  = pd.read_csv("test.csv")
+
+# List variables
+list(train_df)
+train_df.info()
+train_df.head()
+
+######################
+# Descriptive Checks #
+######################
+train_df['Survived'].value_counts(normalize = True)
+sns.countplot(train_df['Survived'])
+
+##################################
+# Passanger Class #
+###################
+train_df['Survived'].groupby(train_df['Pclass']).mean()
+# Class 3 was clearly less likely to survive
+
+##################################
+# Name #
+########
+train_df['Title'] = train_df['Name'].apply(lambda x: x.split(',')[1]).apply(lambda x: x.split()[0])
+train_df['Title'].value_counts()
+train_df['Survived'].groupby(train_df['Title']).mean()
+# Mr much less likely to survive
+
+##################################
+# Sex #
+#######
+train_df['Sex'].value_counts(normalize = True)
+train_df['Survived'].groupby(train_df['Sex']).mean()
+
+##################################
+# Age #
+#######
+train_df['Survived'].groupby(train_df['Age'].isnull()).mean()
+pd.qcut(train_df['Age'],5).value_counts()
+
+##################################
+# Sibling Spouse #
+##################
+train_df['Survived'].groupby(train_df['SibSp']).mean()
+train_df['SibSp'].value_counts()
 
 
+#################################
+# Parents and Childrend #
+#########################
+train_df['Survived'].groupby(train_df['Parch']).mean()
+train_df['Parch'].value_counts()
 
 
+# Feature Engineering
+def names(train_df, test_df):
+    for i in [train_df, test_df]:
+        i['Name_Len'] = i['Name'].apply(lambda x: len(x))
+        i['Name_Title'] = i['Name'].apply(lambda x: x.split(',')[1]).apply(lambda x: x.split()[0])
+        del i['Name']
+    return train_df, test_df
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+def age_impute(train_df, test_df):
+    for i in [train_df, test_df]:
+        i['Age_Null_Flag'] = i['Age'].apply(lambda x: 1 if pd.isnull(x) else 0)
+        data = train.groupby(['Name_Title', 'Pclass'])['Age']
+        i['Age'] = data.transform(lambda x: x.fillna(x.mean()))
+    return train_df, test_df
 
 
 
