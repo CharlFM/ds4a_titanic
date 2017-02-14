@@ -1,0 +1,92 @@
+# Libraries
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+import re
+import warnings
+from sklearn.pipeline import make_pipeline
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.feature_selection import SelectKBest
+from sklearn.cross_validation import StratifiedKFold
+from sklearn.grid_search import GridSearchCV
+from sklearn.ensemble.gradient_boosting import GradientBoostingClassifier
+from sklearn.cross_validation import cross_val_score
+from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.feature_selection import SelectFromModel
+#%matplotlib inline
+
+###########################################################################################################
+#                                                Functions                                                #
+###########################################################################################################
+
+###########################################################################################################
+# Categorical Imputation
+def cat_imputer(df, vars_in, cat_imp):
+    temp_main = df[vars_in + cat_imp]
+    # Add sequence to get correct sequence at end
+    temp_main["seq"] = list(range(0, len(temp_main), 1))
+    # Concatenate all variables to create unique levels
+    temp_main["key"] = ""
+    for v in vars_in :
+        temp_main["key"] = temp_main.apply(lambda x:'%s%s' % (x["key"], x[v]), axis = 1)
+    
+    unique_levs = temp_main["key"].unique()
+    # Loop through each key and for each key find the most observed values
+    for lev in unique_levs :
+        temp_df = temp_main[temp_main["key"] == lev]
+        if temp_df[cat_imp[0]].isnull().sum() - len(temp_df) == 0 :
+            imputer = temp_main[cat_imp[0]].value_counts().argmax()
+            warnings.warn("Some categories got the overall median, restrict the vars_in argument or reduce the strictness of the bindings to have more granular imputations")
+        else :
+            imputer = temp_df[cat_imp[0]].value_counts().argmax()
+            
+        temp_df = temp_df.replace(['nan', 'NaN', 'None', np.NaN], imputer)
+        if lev != unique_levs[0] :
+            temp_df_fin = temp_df_fin.append(temp_df)
+        else :
+            temp_df_fin = temp_df
+    
+    # Sort 
+    temp_df_fin = temp_df_fin.sort('seq')
+    
+    # Return the cat_imp column in the original df
+    return temp_df_fin[cat_imp[0]]
+
+###########################################################################################################
+# Remove multiple variables from a list
+def list_remover(list_in, vars_to_remove):
+    list_out = list(list_in)
+    for var in vars_to_remove :
+        list_out.remove(var) 
+        
+    return list_out
+
+###########################################################################################################
+# Scale non-binary, numeric features
+def scaler(df_in, feats_to_scale):
+    df_out = df_in
+    for feat in feats_to_scale :
+        if (df_out[feat].dtype == np.float64 or df_out[feat].dtype == np.int64) :
+            if (max(df_out[feat]) == 1 and min(df_out[feat]) == 0) :
+                df_out[feat] = df_out[feat]
+            else :
+                df_out[feat] = df_out[feat] / max(df_out[feat])
+                
+    return df_out
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

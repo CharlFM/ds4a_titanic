@@ -1,0 +1,143 @@
+#####################################
+#        Feature Engineering        #
+#####################################
+
+# Names
+Names1 = pd.Series(total_df["Name"])
+
+Names2 = Names1.str.extract('(.*)\,(.*)\.(.*)\(?')
+Names3 = pd.Series(Names2[2])
+Names2[3] = Names3.str.extract('\((.*?)\)')
+
+Names4 = pd.Series(Names2[2])
+Names5 = Names4.str.extract('(.*)\(')
+Names5[Names5.isnull()] = Names4[Names5.isnull()]
+Names5 = Names5.str.strip(" ")
+Names5 = Names5.str.replace('""', '')
+Names2[2] = Names5
+
+# last name, title. first name (person original name)
+# Smith, Mrs. Lucien Philip (Mary Eloise Hughes)
+
+Names2.columns = ['last_name', 'title', 'first_name', 'husband_name']
+Names2.last_name    = Names2.last_name.str.strip(" ")
+Names2.title        = Names2.title.str.strip(" ")
+Names2.first_name   = Names2.first_name.str.strip(" ")
+Names2.husband_name = Names2.husband_name.str.strip(" ")
+
+Names_orig   = pd.Series(list(Names2["husband_name"]))
+Names_orig2  = pd.Series(list(Names2["husband_name"]))
+Names_fn     = pd.Series(list(Names2["first_name"]))
+Names_orig[Names_orig.isnull()]    = Names_fn[Names_orig.isnull()]
+Names_orig2[Names_orig2.notnull()] = Names_fn[Names_orig2.notnull()]
+
+Names2["husband_name"] = pd.Series(list(Names_orig2))
+Names2["first_name"]   = pd.Series(list(Names_orig))
+
+total_df = pd.concat([total_df, Names2], axis = 1)
+total_df = total_df.drop("Name", 1)
+
+# Correcting titles
+total_df['title'].value_counts()
+total_df.title[total_df.title.isin(["Mr", "Capt", "Sir", "Don", "Major", "Col"])] = "Mr"
+total_df.title[total_df.title.isin(["Master", "Jonkheer"])] = "Master"
+total_df.title[total_df.title.isin(["Miss", "Mlle", "Ms", "Lady"])] = "Miss"
+total_df.title[total_df.title.isin(["Mrs", "the Countess", "Mme", "Mrs. Martin (Elizabeth L", "Dona"])] = "Mrs"
+
+######################################################################################################################
+
+# Age and Fare
+grouped = total_df.groupby(['Sex', 'Pclass', 'title'])[["Age", "Fare"]]
+grouped.median()
+
+total_df["Age"] = total_df.groupby(['Sex', 'Pclass', 'title'])[["Age"]].transform(lambda x: x.fillna(x.median()))
+total_df["Fare"] = total_df.groupby(['Sex', 'Pclass', 'title'])[["Fare"]].transform(lambda x: x.fillna(x.median()))
+total_df.info()
+total_df.describe()
+
+######################################################################################################################
+
+# Bin age and Fare (temp)
+total_df['age_group']  = pd.cut(total_df.Age, range(0, 85, 20))
+total_df['fare_group'] = pd.cut(total_df.Fare, range(0, 550, 20), right = False)
+
+######################################################################################################################
+
+# Embarked and Cabin
+total_df["Embarked"]     = cat_imputer(total_df, ['Sex', 'Pclass', 'title', 'fare_group', 'age_group'], ["Embarked"])
+total_df["Cabin"]        = cat_imputer(total_df, ['Sex', 'Pclass', 'title', 'fare_group', 'age_group'], ["Cabin"])
+# Get lower granularity of cabin class
+total_df["Cabin_class"]  = total_df['Cabin'].map(lambda c : c[0])
+
+######################################################################################################################
+
+# Impose none for blank husband names
+total_df["husband_name"] = total_df.husband_name.replace(['nan', 'NaN', 'None', np.NaN], "None")
+total_df["husband"]      = np.where(total_df.husband_name == 'None', 'None', 'Has')
+
+######################################################################################################################
+
+# Dummy coding gender
+total_df['Sex'] = total_df['Sex'].map({'male':1,'female':0})
+
+######################################################################################################################
+
+# Get ticket information - only the prefix of each ticket is useful
+Tickets1 = pd.Series(total_df["Ticket"])
+
+Tickets2 = Tickets1.str.extract('(.*)\s(.*)')
+
+Tickets3 = Tickets2[0]
+Tickets3 = Tickets3.str.strip(" ")
+Tickets3 = Tickets3.str.replace('.', '')
+Tickets3 = Tickets3.str.replace('/', '')
+Tickets3 = Tickets3.str.replace(' ', '')
+Tickets3[Tickets3.isnull()] = "MISS"
+
+total_df['Ticket'] = Tickets3
+
+######################################################################################################################
+
+# Drop bandings
+total_df = total_df.drop("fare_group", 1)
+total_df = total_df.drop("age_group", 1)
+
+######################################################################################################################
+
+total_df.info()
+# Create dummy variables - could add Cabin, husband name, first name and surname - but not logical to use...
+dummies_title = pd.get_dummies(total_df.title, prefix = 'Title')
+dummies_cabin = pd.get_dummies(total_df.Cabin_class, prefix = 'Cabin')
+dummies_embar = pd.get_dummies(total_df.Embarked, prefix = 'Embarked')
+dummies_tickt = pd.get_dummies(total_df.Ticket, prefix = 'Ticket')
+dummies_husbn = pd.get_dummies(total_df.husband, prefix = 'Husband')
+
+######################################################################################################################
+
+model_data = total_df.drop(['title',   'Cabin',     'Cabin_class', 'Embarked', 'Ticket', 'husband_name', 
+                            'husband', 'last_name', 'first_name'], axis = 1)
+model_data = pd.concat([model_data, 
+                        dummies_title,
+                        dummies_cabin,
+                        dummies_embar,
+                        dummies_tickt,
+                        dummies_husbn], axis = 1)
+
+######################################################################################################################
+ 
+# Scale features
+features = list(model_data.columns)
+features = list_remover(features, ["Set", "Survived", "PassengerId"])
+
+model_data = scaler(model_data, features)
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,55 @@
+# List variables
+train_df.info() # Age and Cabin has missing values
+train_df.head()
+
+######################
+# Descriptive Checks #
+######################
+train_df['Survived'].value_counts(normalize = True)
+train_df['Survived'].mean()
+
+##################################
+# Passanger Class #
+###################
+train_df['Survived'].groupby(train_df['Pclass']).mean()
+# Class 3 was clearly less likely to survive
+
+##################################
+# Name #
+########
+train_df['Title'] = train_df['Name'].apply(lambda x: x.split(',')[1]).apply(lambda x: x.split()[0])
+train_df['Title'].value_counts()
+train_df['Survived'].groupby(train_df['Title']).mean()
+# Mr much less likely to survive
+
+##################################
+# Sex #
+#######
+train_df['Sex'].value_counts(normalize = True)
+train_df['Survived'].groupby(train_df['Sex']).mean()
+
+##################################
+# Age #
+#######
+train_df['Survived'].groupby(train_df['Age'].isnull()).mean()
+pd.qcut(train_df['Age'],5).value_counts()
+
+##################################
+# Sibling Spouse #
+##################
+train_df['Survived'].groupby(train_df['SibSp']).mean()
+train_df['SibSp'].value_counts()
+
+
+#################################
+# Parents and Childrend #
+#########################
+
+
+
+
+
+
+
+
+

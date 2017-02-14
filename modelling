@@ -1,0 +1,6 @@
+# Split between train and test from test.csv
+model_train = model_data[model_data.Set == "train"]
+model_test  = model_data[model_data.Set == "test"]
+model_train = model_train.drop(['Set'], axis = 1)
+model_test  = model_test.drop(['Set'], axis = 1)
+
